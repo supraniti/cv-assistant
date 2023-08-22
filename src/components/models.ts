@@ -384,7 +384,7 @@ export const cv: CV = {
   ],
 };
 
-export const defaultCv:CV = {
+export const defaultCv: CV = {
   personalInformation: {
     firstName: '',
     lastName: '',
@@ -436,26 +436,52 @@ export const defaultCv:CV = {
   ],
 };
 
+
+export enum QueryTypes {
+  SUGGEST = 'suggestImprovements',
+  ASK = 'askInformation'
+}
+
+export enum MessageStates {
+  INITIAL = 'initial',
+  SUGGESTIONS = 'suggestions',
+  QUESTIONS = 'questions',
+}
+
+export enum Roles {
+  USER = 'user',
+  ASSISTANT = 'assistant'
+}
+export enum MessageTypes {
+  QUESTION = 'question',
+  SUGGESTION = 'suggestion',
+  REQUEST = 'request',
+  INSTRUCTION = 'instruction',
+}
+
 export const assistantMessages = {
   default: {
     assistant: {
-      id: '1',
+      id: Math.random().toString(),
       name: 'Jane',
       avatar: 'https://cdn.quasar.dev/img/avatar3.jpg',
-      text: ["Hi, I'm Jane, your CV assistant, what would you  like to do?", "1st option"],
+      state: MessageStates.INITIAL,
+      text: [],
+      suggestions: [],
+      questions: [],
       sent: false,
       stamp: new Date().toLocaleString(),
     },
     me: {
-      id: '2',
+      id: Math.random().toString(),
       name: 'me',
       avatar: 'https://cdn.quasar.dev/img/avatar4.jpg',
-      text: ["answer"],
+      text: ['Suggest improvements'],
       sent: true,
       stamp: new Date().toLocaleString(),
     },
   },
-  suggest: (suggestion:string) => ({
+  suggest: (suggestion: string) => ({
     id: Math.random().toString(),
     name: 'Jane',
     avatar: 'https://cdn.quasar.dev/img/avatar3.jpg',
@@ -465,7 +491,33 @@ export const assistantMessages = {
   }),
 };
 
-export enum QueryTypes {
-  SUGGEST = 'suggestImprovements',
-  ASK = 'askInformation'
+export const generateUUID = () => {
+  let uuid = '';
+  const hexChars = '0123456789abcdef';
+
+  for (let i = 0; i < 36; i++) {
+    if (i === 8 || i === 13 || i === 18 || i === 23) {
+      uuid += '-';
+    } else if (i === 14) {
+      uuid += '4';
+    } else if (i === 19) {
+      uuid += hexChars[(Math.random() * 4) | 8];
+    } else {
+      uuid += hexChars[Math.floor(Math.random() * 16)];
+    }
+  }
+
+  return uuid;
+};
+
+export interface Message {
+  type?: string;
+  title?: string;
+  body?: string | Record<string, any>;
+  options?
+}
+
+export interface ChatMessage {
+  messages: Message[];
+  index: number;
 }

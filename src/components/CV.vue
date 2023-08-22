@@ -1,30 +1,14 @@
 <template>
   <div class="cv q-pa-md">
     <q-card class="row" bordered>
-      <template
-        v-for="(value, property) in cv"
-        :key="property"
-      >
-        <q-card-section
-          :class="[
-            getPropertyMetaData([property]).displayClass,
-            property === context ? 'context-property' : null
-          ]"
-          @click="setContext(property)"
-          outlined
-        >
+      <template v-for="(value, property) in cv" :key="property">
+        <q-card-section :class="[
+          getPropertyMetaData([property]).displayClass,
+          property === context ? 'context-property' : null
+        ]" @click="setContext(property)" outlined>
           <div class="row items-center">
-            <simple-key-value
-              :label-text="getPropertyMetaData([property]).label"
-            />
-            <q-fab
-              v-if="property === context"
-              flat
-              outline
-              color="primary"
-              icon="keyboard_arrow_right"
-              direction="right"
-            >
+            <simple-key-value :label-text="getPropertyMetaData([property]).label" />
+            <q-fab v-if="property === context" flat outline color="primary" icon="keyboard_arrow_right" direction="right">
               <q-fab-action color="primary" @click="handleChatEdit" icon="chat">
                 <q-tooltip>Chat Edit</q-tooltip>
               </q-fab-action>
@@ -36,74 +20,41 @@
               </q-fab-action>
             </q-fab>
             <div class="spacer"></div>
-            <div
-              v-if="context === property && showChatEdit"
-              class="chat-widget q-pa-md row"
-            >
-              <template
-                v-for="message in chatMessages"
-                :key="message.id"
-              >
-                <q-chat-message
-                  :name="message.name"
-                  :avatar="message.avatar"
-                  :sent="message.sent"
-                  :stamp="message.stamp"
-                >
-                  <div v-for="(text, index) in message.text" :key="index">{{ text }}</div>
-                  <div>
-                    <a href="#" @click="suggestImprovements(context)">Suggest improvements</a>,
-                    <a href="#" @click="addInformation(context)">Help me add more information</a>
-                  </div>
+            <div v-if="context === property && showChatEdit" class="chat-widget q-pa-md row">
+              <template v-for="message in chatMessages" :key="message.id">
+                <q-chat-message :name="message.name" :avatar="message.avatar" :sent="message.sent" :stamp="message.stamp">
+                  <p>{{ message.message.title }}</p>
+                  <p>{{ message.message.body }}</p>
                   <div v-if="isThinking">
-                    <q-spinner-dots size="2rem"/>
+                    <q-spinner-dots size="2rem" />
                   </div>
                 </q-chat-message>
               </template>
             </div>
           </div>
-          <q-separator spaced/>
+          <q-separator spaced />
           <template v-if="Array.isArray(value)">
             <div class="row q-gutter-md">
-              <q-card
-                flat bordered
-                v-for="subProperty in value"
-                :key="subProperty"
-                :class="getPropertyMetaData([property]).childDisplayClass"
-              >
-                <q-card-section
-                  v-for="(value, key) in subProperty"
-                  :key="key"
-                  :class="getPropertyMetaData([property, key]).displayClass"
-                >
-                  <simple-key-value
-                    :value="value"
-                    :label-text="getPropertyMetaData([property, key]).label"
-                  />
+              <q-card flat bordered v-for="(subProperty, index) in value" :key="index"
+                :class="getPropertyMetaData([property]).childDisplayClass">
+                <q-card-section v-for="(value, key) in subProperty" :key="key"
+                  :class="getPropertyMetaData([property, key]).displayClass">
+                  <simple-key-value :value="value" :label-text="getPropertyMetaData([property, key]).label" />
                 </q-card-section>
               </q-card>
             </div>
           </template>
           <template v-else-if="typeof value === 'string'">
             <q-card-section>
-              <simple-key-value
-                :value="value"
-              />
+              <simple-key-value :value="value" />
             </q-card-section>
           </template>
           <template v-else>
-            <div
-              :class="getPropertyMetaData([property]).childDisplayClass"
-            >
-              <q-card-section
-                v-for="(subPropertyValue, subProperty) in value"
-                :key="subProperty"
-                :class="getPropertyMetaData([property, subProperty]).displayClass"
-              >
-                <simple-key-value
-                  :value="subPropertyValue"
-                  :label-text="getPropertyMetaData([property, subProperty]).label"
-                />
+            <div :class="getPropertyMetaData([property]).childDisplayClass">
+              <q-card-section v-for="(subPropertyValue, subProperty) in value" :key="subProperty"
+                :class="getPropertyMetaData([property, subProperty]).displayClass">
+                <simple-key-value :value="subPropertyValue"
+                  :label-text="getPropertyMetaData([property, subProperty]).label" />
               </q-card-section>
             </div>
           </template>
@@ -123,8 +74,12 @@ import {
   cv,
   defaultCv,
   propertyMetadata,
-  assistantMessages,
   QueryTypes,
+  MessageStates,
+  Roles,
+  MessageTypes,
+  ChatMessage,
+  generateUUID
 } from './models';
 import SimpleKeyValue from './SimpleKeyValue.vue';
 
@@ -136,7 +91,8 @@ export default defineComponent({
     defaultCv,
     propertyMetadata,
     context: '',
-    chatMessages: [],
+    MessageStates,
+    chatMessages: [] as Record<string, any>[],
     showChatEdit: false,
     isThinking: false,
     propertyMessages: {} as Record<string, any>,
@@ -145,17 +101,32 @@ export default defineComponent({
     getPropertyMetaData(path: string[]) {
       const [property, subProperty] = path;
       if (property && subProperty) {
-        return this.propertyMetadata?.[property]?.subProperties?.[subProperty];
+        return this.propertyMetadata?.[property]?.subProperties?.[subProperty] || {};
       }
       if (property && !subProperty) {
-        return this.propertyMetadata[property];
+        return this.propertyMetadata[property] || {};
       }
-      return null;
+      return {};
     },
     setContext(property: string) {
       this.context = property;
       if (!this.propertyMessages[property]) {
-        this.propertyMessages[property] = [assistantMessages.default.assistant];
+        this.propertyMessages[property] = [
+          this.generateMessage(
+            Roles.ASSISTANT,
+            {
+              index: 0,
+              messages: [
+                {
+                  type: MessageTypes.INSTRUCTION,
+                  title: "Hi, I'm Jane, your CV assistant",
+                  body: 'how can i help?',
+                  options: []
+                }
+              ]
+            }
+          )];
+        this.chatMessages = this.propertyMessages[property];
       }
       this.chatMessages = this.propertyMessages[property];
     },
@@ -197,25 +168,51 @@ export default defineComponent({
         (this as any)[section].push(newItem);
       }
     },
-    async queryGPT(queryType: string, property:string, data: any) {
-      console.log(queryType, property, data);
-      return ['suggestionA', 'suggestionB'];
+    async queryGPT(queryType: string, property: string, data: any): Promise<ChatMessage> {
+      return {
+        index: 0,
+        messages: [
+          {
+            type: MessageTypes.INSTRUCTION,
+            title: 'Improvement found',
+            body: 'Details about the improvements'
+          },
+          {
+            type: MessageTypes.QUESTION,
+            title: 'Add personal details',
+            body: 'Please enter your personal details...'
+          },
+          {
+            type: MessageTypes.SUGGESTION,
+            title: 'Enhance the summary',
+            body: {
+              property: 'summary',
+              value: 'New Summary'
+            }
+          }
+        ]
+      };
     },
     async think() {
       this.isThinking = true;
     },
     async suggestImprovements(property: string) {
-      this.isThinking = true;
-      const suggestions = await this.queryGPT(QueryTypes.SUGGEST, property, this.cv[property]);
-      suggestions.forEach((suggestion) => {
-        this.chatMessages[0].text.push(suggestion);
-      });
-      this.isThinking = false;
+      console.log(property);
     },
     async addInformation(property: string) {
-      const questions = await this.queryGPT(QueryTypes.ASK, property, this.cv[property]);
-
+      const questions = await this.queryGPT(QueryTypes.ASK, property, this.cv);
     },
+    generateMessage(role: Roles, chatMessage: ChatMessage) {
+      const message = chatMessage.messages[chatMessage.index];
+      return {
+        id: generateUUID(),
+        name: role === Roles.ASSISTANT ? 'Jane' : 'Me',
+        avatar: role === Roles.ASSISTANT ? 'https://cdn.quasar.dev/img/avatar3.jpg' : 'https://cdn.quasar.dev/img/avatar3.jpg',
+        message,
+        sent: role === Roles.ASSISTANT,
+        stamp: new Date().toLocaleString(),
+      }
+    }
   },
   async mounted() {
     // (this.chatMessages as any).push(assistantMessages.default.assistant);
@@ -231,11 +228,14 @@ export default defineComponent({
   height: 200px;
   display: flex;
   flex-flow: column;
-  overflow: scroll;
   width: 500px;
 }
 
 .spacer {
   flex: 1;
+}
+
+u {
+  cursor: pointer;
 }
 </style>
