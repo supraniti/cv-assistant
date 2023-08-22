@@ -79,7 +79,7 @@ import {
   Roles,
   MessageTypes,
   ChatMessage,
-  generateUUID
+  generateUUID,
 } from './models';
 import SimpleKeyValue from './SimpleKeyValue.vue';
 
@@ -121,10 +121,10 @@ export default defineComponent({
                   type: MessageTypes.INSTRUCTION,
                   title: "Hi, I'm Jane, your CV assistant",
                   body: 'how can i help?',
-                  options: []
-                }
-              ]
-            }
+                  // options: [],
+                },
+              ],
+            },
           )];
         this.chatMessages = this.propertyMessages[property];
       }
@@ -175,22 +175,22 @@ export default defineComponent({
           {
             type: MessageTypes.INSTRUCTION,
             title: 'Improvement found',
-            body: 'Details about the improvements'
+            body: 'Details about the improvements',
           },
           {
             type: MessageTypes.QUESTION,
             title: 'Add personal details',
-            body: 'Please enter your personal details...'
+            body: 'Please enter your personal details...',
           },
           {
             type: MessageTypes.SUGGESTION,
             title: 'Enhance the summary',
             body: {
               property: 'summary',
-              value: 'New Summary'
-            }
-          }
-        ]
+              value: 'New Summary',
+            },
+          },
+        ],
       };
     },
     async think() {
@@ -211,8 +211,8 @@ export default defineComponent({
         message,
         sent: role === Roles.ASSISTANT,
         stamp: new Date().toLocaleString(),
-      }
-    }
+      };
+    },
   },
   async mounted() {
     // (this.chatMessages as any).push(assistantMessages.default.assistant);

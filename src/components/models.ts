@@ -436,7 +436,6 @@ export const defaultCv: CV = {
   ],
 };
 
-
 export enum QueryTypes {
   SUGGEST = 'suggestImprovements',
   ASK = 'askInformation'
@@ -514,7 +513,7 @@ export interface Message {
   type?: string;
   title?: string;
   body?: string | Record<string, any>;
-  options?
+  // options?
 }
 
 export interface ChatMessage {
